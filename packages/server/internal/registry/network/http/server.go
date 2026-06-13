@@ -7,3 +7,7 @@ var server *gin.Engine
 func init() {
 	server = gin.Default()
 }
+
+func Start(port string) error {
+	return server.Run(":" + port)
+}
