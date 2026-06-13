@@ -86,7 +86,7 @@ func (s *runService) CreateRun(ctx context.Context, run *types.TestRun, suite *t
 	}
 
 	// Use background context: request context is cancelled after the response is sent.
-	go s.process(context.Background(), created, suite, microservices)
+	go s.process(context.Background(), created, suite, microservices, jtlContent)
 	return created, nil
 }
 
@@ -107,7 +107,7 @@ func (s *runService) saveJTL(runID string, content []byte) (string, error) {
 	return path, nil
 }
 
-func (s *runService) process(ctx context.Context, run *types.TestRun, suite *types.Suite, microservices []*types.Microservice) {
+func (s *runService) process(ctx context.Context, run *types.TestRun, suite *types.Suite, microservices []*types.Microservice, jtlContent []byte) {
 	if err := s.runDB.UpdateStatus(ctx, run.ID(), types.RunStatusAnalyzing); err != nil {
 		log.Printf("runService.process update to analyzing: %v", err)
 		return
@@ -123,6 +123,7 @@ func (s *runService) process(ctx context.Context, run *types.TestRun, suite *typ
 		Run:           run,
 		Suite:         suite,
 		Microservices: microservices,
+		JTLContent:    jtlContent,
 	})
 	if err != nil {
 		log.Printf("runService.process runner failed for run %s: %v", run.ID(), err)
