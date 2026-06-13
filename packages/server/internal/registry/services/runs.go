@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -12,9 +13,9 @@ import (
 
 type RunSvc interface {
 	Svc[*types.TestRun]
-	ListBySuiteID(suiteID string) []*types.TestRun
-	CreateRun(run *types.TestRun, suite *types.Suite, microservices []*types.Microservice, jtlContent []byte) (*types.TestRun, error)
-	GetDiagnosis(runID string) (*types.Diagnosis, error)
+	ListBySuiteID(ctx context.Context, suiteID string) []*types.TestRun
+	CreateRun(ctx context.Context, run *types.TestRun, suite *types.Suite, microservices []*types.Microservice, jtlContent []byte) (*types.TestRun, error)
+	GetDiagnosis(ctx context.Context, runID string) (*types.Diagnosis, error)
 }
 
 type runService struct {
@@ -37,38 +38,38 @@ func NewRunService(runDB data.RunDB, diagnosisDB data.DiagnosisDB, runner Runner
 
 // --- Svc[*types.TestRun] ---
 
-func (s *runService) GetByID(id string) (*types.TestRun, error) {
-	return s.runDB.GetByID(id)
+func (s *runService) GetByID(ctx context.Context, id string) (*types.TestRun, error) {
+	return s.runDB.GetByID(ctx, id)
 }
 
 // Create persists a run directly without triggering the analysis pipeline.
-func (s *runService) Create(item *types.TestRun) (*types.TestRun, error) {
-	return s.runDB.Create(item)
+func (s *runService) Create(ctx context.Context, item *types.TestRun) (*types.TestRun, error) {
+	return s.runDB.Create(ctx, item)
 }
 
 // Update is not supported — test runs are immutable after creation.
-func (s *runService) Update(_ string, _ *types.TestRun) (*types.TestRun, error) {
+func (s *runService) Update(_ context.Context, _ string, _ *types.TestRun) (*types.TestRun, error) {
 	return nil, fmt.Errorf("test runs are immutable")
 }
 
-func (s *runService) Delete(id string) error {
-	run, err := s.runDB.GetByID(id)
+func (s *runService) Delete(ctx context.Context, id string) error {
+	run, err := s.runDB.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("run not found: %w", err)
 	}
 	if run.JTLFilePath() != "" {
 		_ = os.Remove(run.JTLFilePath())
 	}
-	return s.runDB.Delete(id)
+	return s.runDB.Delete(ctx, id)
 }
 
 // --- RunSvc extensions ---
 
-func (s *runService) ListBySuiteID(suiteID string) []*types.TestRun {
-	return s.runDB.ListBySuiteID(suiteID)
+func (s *runService) ListBySuiteID(ctx context.Context, suiteID string) []*types.TestRun {
+	return s.runDB.ListBySuiteID(ctx, suiteID)
 }
 
-func (s *runService) CreateRun(run *types.TestRun, suite *types.Suite, microservices []*types.Microservice, jtlContent []byte) (*types.TestRun, error) {
+func (s *runService) CreateRun(ctx context.Context, run *types.TestRun, suite *types.Suite, microservices []*types.Microservice, jtlContent []byte) (*types.TestRun, error) {
 	jtlPath, err := s.saveJTL(run.ID(), jtlContent)
 	if err != nil {
 		return nil, fmt.Errorf("runService.CreateRun save jtl: %w", err)
@@ -79,17 +80,18 @@ func (s *runService) CreateRun(run *types.TestRun, suite *types.Suite, microserv
 		run.DurationSeconds(), run.Notes(), jtlPath,
 	)
 
-	created, err := s.runDB.Create(persisted)
+	created, err := s.runDB.Create(ctx, persisted)
 	if err != nil {
 		return nil, fmt.Errorf("runService.CreateRun persist: %w", err)
 	}
 
-	go s.process(created, suite, microservices, jtlContent)
+	// Use background context: request context is cancelled after the response is sent.
+	go s.process(context.Background(), created, suite, microservices)
 	return created, nil
 }
 
-func (s *runService) GetDiagnosis(runID string) (*types.Diagnosis, error) {
-	return s.diagnosisDB.GetByRunID(runID)
+func (s *runService) GetDiagnosis(ctx context.Context, runID string) (*types.Diagnosis, error) {
+	return s.diagnosisDB.GetByRunID(ctx, runID)
 }
 
 // --- internal ---
@@ -105,15 +107,15 @@ func (s *runService) saveJTL(runID string, content []byte) (string, error) {
 	return path, nil
 }
 
-func (s *runService) process(run *types.TestRun, suite *types.Suite, microservices []*types.Microservice, jtlContent []byte) {
-	if err := s.runDB.UpdateStatus(run.ID(), types.RunStatusAnalyzing); err != nil {
+func (s *runService) process(ctx context.Context, run *types.TestRun, suite *types.Suite, microservices []*types.Microservice) {
+	if err := s.runDB.UpdateStatus(ctx, run.ID(), types.RunStatusAnalyzing); err != nil {
 		log.Printf("runService.process update to analyzing: %v", err)
 		return
 	}
 
 	if s.runner == nil || s.analyst == nil {
 		log.Printf("runService.process: runner or analyst not configured for run %s", run.ID())
-		_ = s.runDB.UpdateStatus(run.ID(), types.RunStatusFailed)
+		_ = s.runDB.UpdateStatus(ctx, run.ID(), types.RunStatusFailed)
 		return
 	}
 
@@ -121,11 +123,10 @@ func (s *runService) process(run *types.TestRun, suite *types.Suite, microservic
 		Run:           run,
 		Suite:         suite,
 		Microservices: microservices,
-		JTLContent:    jtlContent,
 	})
 	if err != nil {
 		log.Printf("runService.process runner failed for run %s: %v", run.ID(), err)
-		_ = s.runDB.UpdateStatus(run.ID(), types.RunStatusFailed)
+		_ = s.runDB.UpdateStatus(ctx, run.ID(), types.RunStatusFailed)
 		return
 	}
 
@@ -137,17 +138,17 @@ func (s *runService) process(run *types.TestRun, suite *types.Suite, microservic
 	})
 	if err != nil {
 		log.Printf("runService.process analyst failed for run %s: %v", run.ID(), err)
-		_ = s.runDB.UpdateStatus(run.ID(), types.RunStatusFailed)
+		_ = s.runDB.UpdateStatus(ctx, run.ID(), types.RunStatusFailed)
 		return
 	}
 
-	if _, err := s.diagnosisDB.Save(diagnosis); err != nil {
+	if _, err := s.diagnosisDB.Save(ctx, diagnosis); err != nil {
 		log.Printf("runService.process save diagnosis for run %s: %v", run.ID(), err)
-		_ = s.runDB.UpdateStatus(run.ID(), types.RunStatusFailed)
+		_ = s.runDB.UpdateStatus(ctx, run.ID(), types.RunStatusFailed)
 		return
 	}
 
-	if err := s.runDB.UpdateStatus(run.ID(), types.RunStatusDone); err != nil {
+	if err := s.runDB.UpdateStatus(ctx, run.ID(), types.RunStatusDone); err != nil {
 		log.Printf("runService.process update to done for run %s: %v", run.ID(), err)
 	}
 }

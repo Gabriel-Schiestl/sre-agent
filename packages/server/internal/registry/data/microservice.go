@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -10,12 +11,12 @@ import (
 )
 
 type MicroserviceDB interface {
-	List() []*types.Microservice
-	ListBySuiteID(suiteID string) []*types.Microservice
-	GetByID(id string) (*types.Microservice, error)
-	Create(m *types.Microservice) (*types.Microservice, error)
-	Update(m *types.Microservice) (*types.Microservice, error)
-	Delete(id string) error
+	List(ctx context.Context) []*types.Microservice
+	ListBySuiteID(ctx context.Context, suiteID string) []*types.Microservice
+	GetByID(ctx context.Context, id string) (*types.Microservice, error)
+	Create(ctx context.Context, m *types.Microservice) (*types.Microservice, error)
+	Update(ctx context.Context, m *types.Microservice) (*types.Microservice, error)
+	Delete(ctx context.Context, id string) error
 }
 
 type microserviceDB struct {
@@ -26,8 +27,8 @@ func NewMicroserviceDB(db *DB) MicroserviceDB {
 	return &microserviceDB{db: db}
 }
 
-func (r *microserviceDB) List() []*types.Microservice {
-	rows, err := r.db.db.Query(`
+func (r *microserviceDB) List(ctx context.Context) []*types.Microservice {
+	rows, err := r.db.db.QueryContext(ctx, `
 		SELECT id, test_suite_id, name, description, language, main_endpoints,
 		       cpu_limit, memory_limit, slo_latency_p99_ms, slo_error_rate_pct, created_at
 		FROM microservices ORDER BY created_at DESC
@@ -50,8 +51,8 @@ func (r *microserviceDB) List() []*types.Microservice {
 	return result
 }
 
-func (r *microserviceDB) ListBySuiteID(suiteID string) []*types.Microservice {
-	rows, err := r.db.db.Query(`
+func (r *microserviceDB) ListBySuiteID(ctx context.Context, suiteID string) []*types.Microservice {
+	rows, err := r.db.db.QueryContext(ctx, `
 		SELECT id, test_suite_id, name, description, language, main_endpoints,
 		       cpu_limit, memory_limit, slo_latency_p99_ms, slo_error_rate_pct, created_at
 		FROM microservices WHERE test_suite_id = $1 ORDER BY created_at DESC
@@ -74,8 +75,8 @@ func (r *microserviceDB) ListBySuiteID(suiteID string) []*types.Microservice {
 	return result
 }
 
-func (r *microserviceDB) GetByID(id string) (*types.Microservice, error) {
-	row := r.db.db.QueryRow(`
+func (r *microserviceDB) GetByID(ctx context.Context, id string) (*types.Microservice, error) {
+	row := r.db.db.QueryRowContext(ctx, `
 		SELECT id, test_suite_id, name, description, language, main_endpoints,
 		       cpu_limit, memory_limit, slo_latency_p99_ms, slo_error_rate_pct, created_at
 		FROM microservices WHERE id = $1
@@ -83,12 +84,12 @@ func (r *microserviceDB) GetByID(id string) (*types.Microservice, error) {
 	return scanMicroserviceRow(row)
 }
 
-func (r *microserviceDB) Create(m *types.Microservice) (*types.Microservice, error) {
+func (r *microserviceDB) Create(ctx context.Context, m *types.Microservice) (*types.Microservice, error) {
 	endpointsJSON, err := json.Marshal(m.MainEndpoints())
 	if err != nil {
 		return nil, fmt.Errorf("microserviceDB.Create marshal endpoints: %w", err)
 	}
-	_, err = r.db.db.Exec(`
+	_, err = r.db.db.ExecContext(ctx, `
 		INSERT INTO microservices
 		(id, test_suite_id, name, description, language, main_endpoints,
 		 cpu_limit, memory_limit, slo_latency_p99_ms, slo_error_rate_pct, created_at)
@@ -102,12 +103,12 @@ func (r *microserviceDB) Create(m *types.Microservice) (*types.Microservice, err
 	return m, nil
 }
 
-func (r *microserviceDB) Update(m *types.Microservice) (*types.Microservice, error) {
+func (r *microserviceDB) Update(ctx context.Context, m *types.Microservice) (*types.Microservice, error) {
 	endpointsJSON, err := json.Marshal(m.MainEndpoints())
 	if err != nil {
 		return nil, fmt.Errorf("microserviceDB.Update marshal endpoints: %w", err)
 	}
-	_, err = r.db.db.Exec(`
+	_, err = r.db.db.ExecContext(ctx, `
 		UPDATE microservices
 		SET name = $1, description = $2, language = $3, main_endpoints = $4,
 		    cpu_limit = $5, memory_limit = $6, slo_latency_p99_ms = $7, slo_error_rate_pct = $8
@@ -120,8 +121,8 @@ func (r *microserviceDB) Update(m *types.Microservice) (*types.Microservice, err
 	return m, nil
 }
 
-func (r *microserviceDB) Delete(id string) error {
-	_, err := r.db.db.Exec(`DELETE FROM microservices WHERE id = $1`, id)
+func (r *microserviceDB) Delete(ctx context.Context, id string) error {
+	_, err := r.db.db.ExecContext(ctx, `DELETE FROM microservices WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("microserviceDB.Delete: %w", err)
 	}

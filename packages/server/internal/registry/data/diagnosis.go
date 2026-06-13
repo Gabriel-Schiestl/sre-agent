@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -8,8 +9,8 @@ import (
 )
 
 type DiagnosisDB interface {
-	Save(d *types.Diagnosis) (*types.Diagnosis, error)
-	GetByRunID(runID string) (*types.Diagnosis, error)
+	Save(ctx context.Context, d *types.Diagnosis) (*types.Diagnosis, error)
+	GetByRunID(ctx context.Context, runID string) (*types.Diagnosis, error)
 }
 
 type diagnosisDB struct {
@@ -20,7 +21,7 @@ func NewDiagnosisDB(db *DB) DiagnosisDB {
 	return &diagnosisDB{db: db}
 }
 
-func (r *diagnosisDB) Save(d *types.Diagnosis) (*types.Diagnosis, error) {
+func (r *diagnosisDB) Save(ctx context.Context, d *types.Diagnosis) (*types.Diagnosis, error) {
 	errorPlanJSON, err := json.Marshal(d.ErrorPlan())
 	if err != nil {
 		return nil, fmt.Errorf("diagnosisDB.Save marshal error_plan: %w", err)
@@ -34,7 +35,7 @@ func (r *diagnosisDB) Save(d *types.Diagnosis) (*types.Diagnosis, error) {
 		return nil, fmt.Errorf("diagnosisDB.Save marshal next_steps: %w", err)
 	}
 
-	_, err = r.db.db.Exec(`
+	_, err = r.db.db.ExecContext(ctx, `
 		INSERT INTO diagnoses (id, test_run_id, error_plan, bottlenecks, next_steps, raw_response, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 	`, d.ID(), d.TestRunID(), string(errorPlanJSON), string(bottlenecksJSON), string(nextStepsJSON), d.RawResponse(), d.CreatedAt())
@@ -44,8 +45,8 @@ func (r *diagnosisDB) Save(d *types.Diagnosis) (*types.Diagnosis, error) {
 	return d, nil
 }
 
-func (r *diagnosisDB) GetByRunID(runID string) (*types.Diagnosis, error) {
-	row := r.db.db.QueryRow(`
+func (r *diagnosisDB) GetByRunID(ctx context.Context, runID string) (*types.Diagnosis, error) {
+	row := r.db.db.QueryRowContext(ctx, `
 		SELECT id, test_run_id, error_plan, bottlenecks, next_steps, raw_response, created_at
 		FROM diagnoses WHERE test_run_id = $1
 	`, runID)

@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -9,12 +10,12 @@ import (
 )
 
 type RunDB interface {
-	List() []*types.TestRun
-	ListBySuiteID(suiteID string) []*types.TestRun
-	GetByID(id string) (*types.TestRun, error)
-	Create(run *types.TestRun) (*types.TestRun, error)
-	UpdateStatus(id string, status types.RunStatus) error
-	Delete(id string) error
+	List(ctx context.Context) []*types.TestRun
+	ListBySuiteID(ctx context.Context, suiteID string) []*types.TestRun
+	GetByID(ctx context.Context, id string) (*types.TestRun, error)
+	Create(ctx context.Context, run *types.TestRun) (*types.TestRun, error)
+	UpdateStatus(ctx context.Context, id string, status types.RunStatus) error
+	Delete(ctx context.Context, id string) error
 }
 
 type runDB struct {
@@ -25,8 +26,8 @@ func NewRunDB(db *DB) RunDB {
 	return &runDB{db: db}
 }
 
-func (r *runDB) List() []*types.TestRun {
-	rows, err := r.db.db.Query(`
+func (r *runDB) List(ctx context.Context) []*types.TestRun {
+	rows, err := r.db.db.QueryContext(ctx, `
 		SELECT id, test_suite_id, name, virtual_users, duration_seconds,
 		       notes, status, jtl_file_path, created_at
 		FROM test_runs ORDER BY created_at DESC
@@ -49,8 +50,8 @@ func (r *runDB) List() []*types.TestRun {
 	return result
 }
 
-func (r *runDB) ListBySuiteID(suiteID string) []*types.TestRun {
-	rows, err := r.db.db.Query(`
+func (r *runDB) ListBySuiteID(ctx context.Context, suiteID string) []*types.TestRun {
+	rows, err := r.db.db.QueryContext(ctx, `
 		SELECT id, test_suite_id, name, virtual_users, duration_seconds,
 		       notes, status, jtl_file_path, created_at
 		FROM test_runs WHERE test_suite_id = $1 ORDER BY created_at DESC
@@ -73,8 +74,8 @@ func (r *runDB) ListBySuiteID(suiteID string) []*types.TestRun {
 	return result
 }
 
-func (r *runDB) GetByID(id string) (*types.TestRun, error) {
-	row := r.db.db.QueryRow(`
+func (r *runDB) GetByID(ctx context.Context, id string) (*types.TestRun, error) {
+	row := r.db.db.QueryRowContext(ctx, `
 		SELECT id, test_suite_id, name, virtual_users, duration_seconds,
 		       notes, status, jtl_file_path, created_at
 		FROM test_runs WHERE id = $1
@@ -82,8 +83,8 @@ func (r *runDB) GetByID(id string) (*types.TestRun, error) {
 	return scanRunRow(row)
 }
 
-func (r *runDB) Create(run *types.TestRun) (*types.TestRun, error) {
-	_, err := r.db.db.Exec(`
+func (r *runDB) Create(ctx context.Context, run *types.TestRun) (*types.TestRun, error) {
+	_, err := r.db.db.ExecContext(ctx, `
 		INSERT INTO test_runs
 		(id, test_suite_id, name, virtual_users, duration_seconds, notes, status, jtl_file_path, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -95,16 +96,16 @@ func (r *runDB) Create(run *types.TestRun) (*types.TestRun, error) {
 	return run, nil
 }
 
-func (r *runDB) UpdateStatus(id string, status types.RunStatus) error {
-	_, err := r.db.db.Exec(`UPDATE test_runs SET status = $1 WHERE id = $2`, string(status), id)
+func (r *runDB) UpdateStatus(ctx context.Context, id string, status types.RunStatus) error {
+	_, err := r.db.db.ExecContext(ctx, `UPDATE test_runs SET status = $1 WHERE id = $2`, string(status), id)
 	if err != nil {
 		return fmt.Errorf("runDB.UpdateStatus: %w", err)
 	}
 	return nil
 }
 
-func (r *runDB) Delete(id string) error {
-	_, err := r.db.db.Exec(`DELETE FROM test_runs WHERE id = $1`, id)
+func (r *runDB) Delete(ctx context.Context, id string) error {
+	_, err := r.db.db.ExecContext(ctx, `DELETE FROM test_runs WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("runDB.Delete: %w", err)
 	}

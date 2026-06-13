@@ -202,7 +202,8 @@ func toDiagnosisResponse(d *types.Diagnosis) diagnosisResponse {
 // --- Suite handlers ---
 
 func (h *Handlers) listSuites(c *gin.Context) {
-	suites := h.suites.List()
+	ctx := c.Request.Context()
+	suites := h.suites.List(ctx)
 	resp := make([]suiteResponse, 0, len(suites))
 	for _, s := range suites {
 		resp = append(resp, toSuiteResponse(s))
@@ -211,23 +212,25 @@ func (h *Handlers) listSuites(c *gin.Context) {
 }
 
 func (h *Handlers) getSuite(c *gin.Context) {
+	ctx := c.Request.Context()
 	id := c.Param("id")
-	suite, err := h.suites.GetByID(id)
+	suite, err := h.suites.GetByID(ctx, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "suite not found"})
 		return
 	}
-	microservices := h.microservices.ListBySuiteID(id)
+	microservices := h.microservices.ListBySuiteID(ctx, id)
 	c.JSON(http.StatusOK, toSuiteDetailResponse(suite, microservices))
 }
 
 func (h *Handlers) createSuite(c *gin.Context) {
+	ctx := c.Request.Context()
 	var req createSuiteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	suite, err := h.suites.Create(types.NewSuite(req.Name, req.Description))
+	suite, err := h.suites.Create(ctx, types.NewSuite(req.Name, req.Description))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create suite"})
 		return
@@ -236,13 +239,14 @@ func (h *Handlers) createSuite(c *gin.Context) {
 }
 
 func (h *Handlers) updateSuite(c *gin.Context) {
+	ctx := c.Request.Context()
 	id := c.Param("id")
 	var req updateSuiteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	updated, err := h.suites.Update(id, types.NewSuite(req.Name, req.Description))
+	updated, err := h.suites.Update(ctx, id, types.NewSuite(req.Name, req.Description))
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -251,8 +255,9 @@ func (h *Handlers) updateSuite(c *gin.Context) {
 }
 
 func (h *Handlers) deleteSuite(c *gin.Context) {
+	ctx := c.Request.Context()
 	id := c.Param("id")
-	if err := h.suites.Delete(id); err != nil {
+	if err := h.suites.Delete(ctx, id); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
@@ -262,13 +267,14 @@ func (h *Handlers) deleteSuite(c *gin.Context) {
 // --- Microservice handlers ---
 
 func (h *Handlers) createMicroservice(c *gin.Context) {
+	ctx := c.Request.Context()
 	suiteID := c.Param("id")
 	var req createMicroserviceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if _, err := h.suites.GetByID(suiteID); err != nil {
+	if _, err := h.suites.GetByID(ctx, suiteID); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "suite not found"})
 		return
 	}
@@ -277,7 +283,7 @@ func (h *Handlers) createMicroservice(c *gin.Context) {
 		endpoints = []string{}
 	}
 	m := types.NewMicroservice(suiteID, req.Name, req.Description, req.Language, endpoints, req.CPULimit, req.MemoryLimit, req.SLOLatencyP99Ms, req.SLOErrorRatePct)
-	created, err := h.microservices.Create(m)
+	created, err := h.microservices.Create(ctx, m)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create microservice"})
 		return
@@ -286,6 +292,7 @@ func (h *Handlers) createMicroservice(c *gin.Context) {
 }
 
 func (h *Handlers) updateMicroservice(c *gin.Context) {
+	ctx := c.Request.Context()
 	id := c.Param("id")
 	var req updateMicroserviceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -296,9 +303,8 @@ func (h *Handlers) updateMicroservice(c *gin.Context) {
 	if endpoints == nil {
 		endpoints = []string{}
 	}
-	// suiteID is not used by Update — the service preserves the existing one
 	m := types.NewMicroservice("", req.Name, req.Description, req.Language, endpoints, req.CPULimit, req.MemoryLimit, req.SLOLatencyP99Ms, req.SLOErrorRatePct)
-	updated, err := h.microservices.Update(id, m)
+	updated, err := h.microservices.Update(ctx, id, m)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -307,8 +313,9 @@ func (h *Handlers) updateMicroservice(c *gin.Context) {
 }
 
 func (h *Handlers) deleteMicroservice(c *gin.Context) {
+	ctx := c.Request.Context()
 	id := c.Param("id")
-	if err := h.microservices.Delete(id); err != nil {
+	if err := h.microservices.Delete(ctx, id); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
@@ -318,8 +325,9 @@ func (h *Handlers) deleteMicroservice(c *gin.Context) {
 // --- Run handlers ---
 
 func (h *Handlers) listRuns(c *gin.Context) {
+	ctx := c.Request.Context()
 	suiteID := c.Param("id")
-	runs := h.runs.ListBySuiteID(suiteID)
+	runs := h.runs.ListBySuiteID(ctx, suiteID)
 	resp := make([]runResponse, 0, len(runs))
 	for _, r := range runs {
 		resp = append(resp, toRunResponse(r))
@@ -328,8 +336,9 @@ func (h *Handlers) listRuns(c *gin.Context) {
 }
 
 func (h *Handlers) getRun(c *gin.Context) {
+	ctx := c.Request.Context()
 	id := c.Param("id")
-	run, err := h.runs.GetByID(id)
+	run, err := h.runs.GetByID(ctx, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "run not found"})
 		return
@@ -338,9 +347,10 @@ func (h *Handlers) getRun(c *gin.Context) {
 }
 
 func (h *Handlers) createRun(c *gin.Context) {
+	ctx := c.Request.Context()
 	suiteID := c.Param("id")
 
-	suite, err := h.suites.GetByID(suiteID)
+	suite, err := h.suites.GetByID(ctx, suiteID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "suite not found"})
 		return
@@ -371,10 +381,10 @@ func (h *Handlers) createRun(c *gin.Context) {
 		return
 	}
 
-	microservices := h.microservices.ListBySuiteID(suiteID)
+	microservices := h.microservices.ListBySuiteID(ctx, suiteID)
 	run := types.NewTestRun(suiteID, req.Name, req.VirtualUsers, req.DurationSeconds, req.Notes, "")
 
-	created, err := h.runs.CreateRun(run, suite, microservices, jtlContent)
+	created, err := h.runs.CreateRun(ctx, run, suite, microservices, jtlContent)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create run"})
 		return
@@ -383,8 +393,9 @@ func (h *Handlers) createRun(c *gin.Context) {
 }
 
 func (h *Handlers) getDiagnosis(c *gin.Context) {
+	ctx := c.Request.Context()
 	runID := c.Param("id")
-	run, err := h.runs.GetByID(runID)
+	run, err := h.runs.GetByID(ctx, runID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "run not found"})
 		return
@@ -393,7 +404,7 @@ func (h *Handlers) getDiagnosis(c *gin.Context) {
 		c.JSON(http.StatusAccepted, gin.H{"status": string(run.Status())})
 		return
 	}
-	diagnosis, err := h.runs.GetDiagnosis(runID)
+	diagnosis, err := h.runs.GetDiagnosis(ctx, runID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "diagnosis not found"})
 		return
