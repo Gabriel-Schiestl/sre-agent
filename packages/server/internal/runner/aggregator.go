@@ -11,6 +11,7 @@ func aggregateData(records []JTLRecord) services.AggregatedData {
 	p50Ms := calculatePercentile(records, 50)
 	p90Ms := calculatePercentile(records, 90)
 	p99Ms := calculatePercentile(records, 99)
+	errorsGrouped := groupErrors(records)
 
 	return services.AggregatedData{
 		TotalRequests: len(records),
@@ -18,6 +19,7 @@ func aggregateData(records []JTLRecord) services.AggregatedData {
 		LatencyP50Ms: p50Ms,
 		LatencyP90Ms: p90Ms,
 		LatencyP99Ms: p99Ms,
+		ErrorsByType: errorsGrouped,
 	}
 }
 
@@ -47,4 +49,29 @@ func calculatePercentile(records []JTLRecord, percentile int) float64 {
 
 	index := int(float64(len(latencies)-1) * float64(percentile) / 100)
 	return float64(latencies[index])
+}
+
+func groupErrors(records []JTLRecord) []services.ErrorGroup {
+	errorMap := make(map[string]map[string]int)
+	for _, record := range records {
+		if !record.Success {
+			if _, exists := errorMap[record.ResponseCode]; !exists {
+				errorMap[record.ResponseCode] = make(map[string]int)
+			}
+			errorMap[record.ResponseCode][record.FailureMessage]++
+		}
+	}
+
+	var errorGroups []services.ErrorGroup
+	for code, messages := range errorMap {
+		for msg, count := range messages {
+			errorGroups = append(errorGroups, services.ErrorGroup{
+				ResponseCode:   code,
+				FailureMessage: msg,
+				Count:          count,
+			})
+		}
+	}
+
+	return errorGroups
 }
