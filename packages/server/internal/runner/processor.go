@@ -22,9 +22,7 @@ func (p *Processor) Process(payload services.RunPayload) (services.AggregatedDat
 		return services.AggregatedData{}, fmt.Errorf("failed to parse JTL content: %w", err)
 	}
 
-	result := services.AggregatedData{
-		TotalRequests: len(records),
-	}
+	result := aggregateData(records)
 
 	//TODO: implement actual aggregation logic to populate the rest of the fields in result based on records.
 
