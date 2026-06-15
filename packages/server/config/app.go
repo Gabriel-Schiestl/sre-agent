@@ -10,7 +10,10 @@ type AppConfig struct {
 	Port            int    `env:"APP_PORT"          envDefault:"8080"`
 	UploadsDir      string `env:"UPLOADS_DIR"       envDefault:"./data/uploads"`
 	FrontendURL     string `env:"FRONTEND_URL"      envDefault:"http://localhost:3000"`
+	LLMProvider     string `env:"LLM_PROVIDER"      envDefault:"anthropic"`
 	AnthropicAPIKey string `env:"ANTHROPIC_API_KEY"`
+	OllamaURL       string `env:"OLLAMA_URL"        envDefault:"http://localhost:11434"`
+	OllamaModel     string `env:"OLLAMA_MODEL"      envDefault:"llama3.2"`
 }
 
 func LoadApp() (*AppConfig, error) {

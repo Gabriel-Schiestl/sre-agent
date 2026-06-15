@@ -17,10 +17,10 @@ type llmResponse struct {
 }
 
 type Analyst struct {
-	llm *llm.Client
+	llm llm.Client
 }
 
-func New(llmClient *llm.Client) *Analyst {
+func New(llmClient llm.Client) *Analyst {
 	return &Analyst{llm: llmClient}
 }
 

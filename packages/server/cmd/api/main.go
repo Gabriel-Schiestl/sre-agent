@@ -43,7 +43,10 @@ func main() {
 	runDB := data.NewRunDB(db)
 	diagnosisDB := data.NewDiagnosisDB(db)
 
-	llmClient := llm.New(appCfg.AnthropicAPIKey)
+	llmClient, err := llm.New(appCfg.LLMProvider, appCfg.AnthropicAPIKey, appCfg.OllamaURL, appCfg.OllamaModel)
+	if err != nil {
+		log.Fatalf("failed to create llm client: %v", err)
+	}
 	proc := runner.NewProcessor()
 	analyst := analyst.New(llmClient)
 
