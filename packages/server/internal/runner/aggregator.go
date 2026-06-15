@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/services"
@@ -13,15 +14,17 @@ func aggregateData(records []JTLRecord) services.AggregatedData {
 	p99Ms := calculatePercentile(records, 99)
 	errorsGrouped := groupErrors(records)
 	endpointMetrics := calculateEndpointMetrics(records)
+	timelines := calculateTimelines(records)
 
 	return services.AggregatedData{
-		TotalRequests: len(records),
-		ErrorRate: errorRate,
-		LatencyP50Ms: p50Ms,
-		LatencyP90Ms: p90Ms,
-		LatencyP99Ms: p99Ms,
-		ErrorsByType: errorsGrouped,
+		TotalRequests:   len(records),
+		ErrorRate:       errorRate,
+		LatencyP50Ms:    p50Ms,
+		LatencyP90Ms:    p90Ms,
+		LatencyP99Ms:    p99Ms,
+		ErrorsByType:    errorsGrouped,
 		EndpointMetrics: endpointMetrics,
+		Timeline:        timelines,
 	}
 }
 
@@ -105,4 +108,45 @@ func aggregateEndpointData(records []JTLRecord) (res services.EndpointMetric) {
 	res.P99Ms = calculatePercentile(records, 99)
 
 	return
+}
+
+func calculateTimelines(records []JTLRecord) []services.TimelinePoint {
+	if len(records) == 0 {
+		return nil
+	}
+
+	const windowSizeMs = int64(30_000)
+
+	startTime := records[0].TimeStamp
+	windows := make(map[int64][]JTLRecord)
+
+	for _, rec := range records {
+		idx := (rec.TimeStamp - startTime) / windowSizeMs
+		windows[idx] = append(windows[idx], rec)
+	}
+
+	keys := make([]int64, 0, len(windows))
+	for k := range windows {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+
+	result := make([]services.TimelinePoint, 0, len(windows))
+	for _, k := range keys {
+		recs := windows[k]
+		errorCount := 0
+		for _, r := range recs {
+			if !r.Success {
+				errorCount++
+			}
+		}
+		result = append(result, services.TimelinePoint{
+			WindowStart: startTime + k*windowSizeMs,
+			ErrorCount:  errorCount,
+			TotalCount:  len(recs),
+			P99Ms:       calculatePercentile(recs, 99),
+		})
+	}
+
+	return result
 }
