@@ -6,9 +6,12 @@ import (
 	"os"
 
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/config"
+	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/analyst"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/data"
 	registryhttp "github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/network/http"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/services"
+	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/runner"
+	"github.com/Gabriel-Schiestl/sre-agent/packages/server/pkg/llm"
 )
 
 func main() {
@@ -40,10 +43,13 @@ func main() {
 	runDB := data.NewRunDB(db)
 	diagnosisDB := data.NewDiagnosisDB(db)
 
+	llmClient := llm.New(appCfg.AnthropicAPIKey)
+	proc := runner.NewProcessor()
+	analyst := analyst.New(llmClient)
+
 	suiteSvc := services.NewSuiteService(suiteDB)
 	microserviceSvc := services.NewMicroserviceService(microserviceDB)
-	// runner and analyst are nil until those modules are implemented
-	runSvc := services.NewRunService(runDB, diagnosisDB, nil, nil, appCfg.UploadsDir)
+	runSvc := services.NewRunService(runDB, diagnosisDB, proc, analyst, appCfg.UploadsDir)
 
 	registryhttp.SetupCORS(appCfg.FrontendURL)
 	registryhttp.RegisterRoutes(suiteSvc, microserviceSvc, runSvc)
