@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -12,7 +13,8 @@ import {
 } from "@/components/ui/table"
 import { CreateRunDialog } from "@/components/shared/create-run-dialog"
 import { formatDateTime } from "@/lib/format"
-import type { TestRun, RunStatus } from "@/types/run"
+import { useRuns } from "@/hooks/use-runs"
+import type { RunStatus } from "@/types/run"
 
 const STATUS_CONFIG: Record<RunStatus, { label: string; className: string }> = {
   pending: { label: "Pending", className: "bg-muted text-muted-foreground" },
@@ -40,11 +42,26 @@ function StatusBadge({ status }: { status: RunStatus }) {
 
 interface RunsSectionProps {
   suiteId: string
-  runs: TestRun[]
 }
 
-export function RunsSection({ suiteId, runs }: RunsSectionProps) {
+export function RunsSection({ suiteId }: RunsSectionProps) {
   const router = useRouter()
+  const { data: runs = [], isLoading } = useRuns(suiteId)
+
+  if (isLoading) {
+    return (
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Test Runs</h2>
+        </div>
+        <div className="space-y-2">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section>

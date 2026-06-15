@@ -1,5 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { getRun, createRun } from "@/lib/api"
+import { getRuns, getRun, createRun } from "@/lib/api"
+
+export function useRuns(suiteId: string) {
+  return useQuery({
+    queryKey: ["runs", suiteId],
+    queryFn: () => getRuns(suiteId),
+    enabled: !!suiteId,
+  })
+}
 
 export function useRun(id: string) {
   return useQuery({
@@ -32,6 +40,6 @@ export function useCreateRun(suiteId: string) {
       notes?: string
       file: File
     }) => createRun(suiteId, payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["suites", suiteId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["runs", suiteId] }),
   })
 }

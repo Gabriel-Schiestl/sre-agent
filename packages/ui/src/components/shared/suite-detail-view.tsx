@@ -76,7 +76,7 @@ export function SuiteDetailView({ id }: SuiteDetailViewProps) {
 
       <Separator />
 
-      <RunsSection suiteId={id} runs={suite.runs} />
+      <RunsSection suiteId={id} />
     </div>
   )
 }

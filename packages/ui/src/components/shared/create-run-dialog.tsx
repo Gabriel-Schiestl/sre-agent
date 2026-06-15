@@ -29,8 +29,8 @@ import { formatFileSize } from "@/lib/format"
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
-  virtualUsers: z.number().int().positive("Must be a positive integer").optional(),
-  durationSeconds: z.number().int().positive("Must be a positive integer").optional(),
+  virtualUsers: z.number().int().positive("Must be a positive integer"),
+  durationSeconds: z.number().int().positive("Must be a positive integer"),
   notes: z.string().optional(),
 })
 
@@ -78,8 +78,8 @@ export function CreateRunDialog({ suiteId, trigger }: CreateRunDialogProps) {
     try {
       const run = await mutateAsync({
         name: values.name,
-        virtualUsers: values.virtualUsers!,
-        durationSeconds: values.durationSeconds!,
+        virtualUsers: values.virtualUsers,
+        durationSeconds: values.durationSeconds,
         notes: values.notes || undefined,
         file,
       })

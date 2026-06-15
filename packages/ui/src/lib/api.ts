@@ -70,6 +70,11 @@ export async function deleteMicroservice(id: string): Promise<void> {
 
 // ─── Runs ─────────────────────────────────────────────────────────────────────
 
+export async function getRuns(suiteId: string): Promise<TestRun[]> {
+  const { data } = await api.get<TestRun[]>(`/suites/${suiteId}/runs`)
+  return data
+}
+
 export async function getRun(id: string): Promise<TestRun> {
   const { data } = await api.get<TestRun>(`/runs/${id}`)
   return data
@@ -84,7 +89,7 @@ export async function createRun(
   form.append("virtualUsers", String(payload.virtualUsers))
   form.append("durationSeconds", String(payload.durationSeconds))
   if (payload.notes) form.append("notes", payload.notes)
-  form.append("file", payload.file)
+  form.append("jtlFile", payload.file)
 
   const { data } = await api.post<TestRun>(`/suites/${suiteId}/runs`, form, {
     headers: { "Content-Type": "multipart/form-data" },
