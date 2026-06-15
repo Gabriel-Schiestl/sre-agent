@@ -12,9 +12,14 @@ import (
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/services"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/runner"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/pkg/llm"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("no .env file found, using environment variables")
+	}
+
 	dbCfg, err := config.LoadDB()
 	if err != nil {
 		log.Fatalf("failed to load db config: %v", err)
