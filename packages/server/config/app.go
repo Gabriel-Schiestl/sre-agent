@@ -7,9 +7,10 @@ import (
 )
 
 type AppConfig struct {
-	Port        int    `env:"APP_PORT"      envDefault:"8080"`
-	UploadsDir  string `env:"UPLOADS_DIR"   envDefault:"./data/uploads"`
-	FrontendURL string `env:"FRONTEND_URL"  envDefault:"http://localhost:3000"`
+	Port            int    `env:"APP_PORT"          envDefault:"8080"`
+	UploadsDir      string `env:"UPLOADS_DIR"       envDefault:"./data/uploads"`
+	FrontendURL     string `env:"FRONTEND_URL"      envDefault:"http://localhost:3000"`
+	AnthropicAPIKey string `env:"ANTHROPIC_API_KEY"`
 }
 
 func LoadApp() (*AppConfig, error) {
