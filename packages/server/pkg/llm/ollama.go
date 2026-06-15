@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -63,7 +64,8 @@ func (c *OllamaClient) Complete(ctx context.Context, systemPrompt, userMessage s
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("llm.Complete: ollama returned status %d", resp.StatusCode)
+		errBody, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("llm.Complete: ollama status %d: %s", resp.StatusCode, string(errBody))
 	}
 
 	var result ollamaChatResponse
