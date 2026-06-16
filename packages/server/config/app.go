@@ -14,6 +14,8 @@ type AppConfig struct {
 	AnthropicAPIKey string `env:"ANTHROPIC_API_KEY"`
 	OllamaURL       string `env:"OLLAMA_URL"        envDefault:"http://localhost:11434"`
 	OllamaModel     string `env:"OLLAMA_MODEL"      envDefault:"llama3.2"`
+	PrometheusURL   string `env:"PROMETHEUS_URL"`
+	PrometheusToken string `env:"PROMETHEUS_TOKEN"`
 }
 
 func LoadApp() (*AppConfig, error) {

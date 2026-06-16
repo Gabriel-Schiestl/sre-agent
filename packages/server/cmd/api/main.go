@@ -7,11 +7,13 @@ import (
 
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/config"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/analyst"
+	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/collector"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/data"
 	registryhttp "github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/network/http"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/services"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/runner"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/pkg/llm"
+	prometheus "github.com/Gabriel-Schiestl/sre-agent/packages/server/pkg/prometheus"
 	"github.com/joho/godotenv"
 )
 
@@ -53,11 +55,20 @@ func main() {
 		log.Fatalf("failed to create llm client: %v", err)
 	}
 	proc := runner.NewProcessor()
-	analyst := analyst.New(llmClient)
+	analystSvc := analyst.New(llmClient)
+
+	var collectorSvc services.Collector
+	if appCfg.PrometheusURL != "" {
+		promClient := prometheus.New(appCfg.PrometheusURL, appCfg.PrometheusToken)
+		collectorSvc = collector.New(promClient)
+		log.Printf("prometheus collector enabled: %s", appCfg.PrometheusURL)
+	} else {
+		log.Println("prometheus collector disabled (PROMETHEUS_URL not set)")
+	}
 
 	suiteSvc := services.NewSuiteService(suiteDB)
 	microserviceSvc := services.NewMicroserviceService(microserviceDB)
-	runSvc := services.NewRunService(runDB, diagnosisDB, proc, analyst, appCfg.UploadsDir)
+	runSvc := services.NewRunService(runDB, diagnosisDB, proc, analystSvc, collectorSvc, appCfg.UploadsDir)
 
 	registryhttp.SetupCORS(appCfg.FrontendURL)
 	registryhttp.RegisterRoutes(suiteSvc, microserviceSvc, runSvc)
