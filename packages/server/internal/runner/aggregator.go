@@ -3,6 +3,7 @@ package runner
 import (
 	"slices"
 	"sort"
+	"time"
 
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/services"
 )
@@ -15,6 +16,7 @@ func aggregateData(records []JTLRecord) services.AggregatedData {
 	errorsGrouped := groupErrors(records)
 	endpointMetrics := calculateEndpointMetrics(records)
 	timelines := calculateTimelines(records)
+	startTime, endTime := extractTimeRange(records)
 
 	return services.AggregatedData{
 		TotalRequests:   len(records),
@@ -25,7 +27,26 @@ func aggregateData(records []JTLRecord) services.AggregatedData {
 		ErrorsByType:    errorsGrouped,
 		EndpointMetrics: endpointMetrics,
 		Timeline:        timelines,
+		StartTime:       startTime,
+		EndTime:         endTime,
 	}
+}
+
+func extractTimeRange(records []JTLRecord) (start, end time.Time) {
+	if len(records) == 0 {
+		now := time.Now()
+		return now, now
+	}
+	minTS, maxTS := records[0].TimeStamp, records[0].TimeStamp
+	for _, r := range records[1:] {
+		if r.TimeStamp < minTS {
+			minTS = r.TimeStamp
+		}
+		if r.TimeStamp > maxTS {
+			maxTS = r.TimeStamp
+		}
+	}
+	return time.UnixMilli(minTS), time.UnixMilli(maxTS)
 }
 
 func calculateErrorRate(records []JTLRecord) float64 {
