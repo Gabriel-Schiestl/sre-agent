@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	collectorpkg "github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/collector"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/data"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/types"
 )
@@ -23,15 +24,17 @@ type runService struct {
 	diagnosisDB data.DiagnosisDB
 	runner      Runner
 	analyst     Analyst
+	collector   Collector
 	uploadsDir  string
 }
 
-func NewRunService(runDB data.RunDB, diagnosisDB data.DiagnosisDB, runner Runner, analyst Analyst, uploadsDir string) RunSvc {
+func NewRunService(runDB data.RunDB, diagnosisDB data.DiagnosisDB, runner Runner, analyst Analyst, collector Collector, uploadsDir string) RunSvc {
 	return &runService{
 		runDB:       runDB,
 		diagnosisDB: diagnosisDB,
 		runner:      runner,
 		analyst:     analyst,
+		collector:   collector,
 		uploadsDir:  uploadsDir,
 	}
 }
@@ -131,11 +134,26 @@ func (s *runService) process(ctx context.Context, run *types.TestRun, suite *typ
 		return
 	}
 
+	var prometheusData *collectorpkg.PrometheusData
+	if s.collector != nil {
+		pd, err := s.collector.Collect(ctx, collectorpkg.CollectPayload{
+			Microservices: microservices,
+			StartTime:     aggregated.StartTime,
+			EndTime:       aggregated.EndTime,
+		})
+		if err != nil {
+			log.Printf("runService.process collector failed for run %s (continuing without metrics): %v", run.ID(), err)
+		} else {
+			prometheusData = pd
+		}
+	}
+
 	diagnosis, err := s.analyst.Analyze(AnalysisPayload{
 		Run:           run,
 		Suite:         suite,
 		Microservices: microservices,
 		Data:          aggregated,
+		Prometheus:    prometheusData,
 	})
 	if err != nil {
 		log.Printf("runService.process analyst failed for run %s: %v", run.ID(), err)
