@@ -35,25 +35,29 @@ type updateSuiteRequest struct {
 }
 
 type createMicroserviceRequest struct {
-	Name            string   `json:"name" binding:"required"`
-	Description     string   `json:"description" binding:"required"`
-	Language        string   `json:"language" binding:"required"`
-	MainEndpoints   []string `json:"mainEndpoints"`
-	CPULimit        string   `json:"cpuLimit"`
-	MemoryLimit     string   `json:"memoryLimit"`
-	SLOLatencyP99Ms int      `json:"sloLatencyP99Ms"`
-	SLOErrorRatePct float64  `json:"sloErrorRatePct"`
+	Name                string   `json:"name" binding:"required"`
+	Description         string   `json:"description" binding:"required"`
+	Language            string   `json:"language" binding:"required"`
+	MainEndpoints       []string `json:"mainEndpoints"`
+	CPULimit            string   `json:"cpuLimit"`
+	MemoryLimit         string   `json:"memoryLimit"`
+	SLOLatencyP99Ms     int      `json:"sloLatencyP99Ms"`
+	SLOErrorRatePct     float64  `json:"sloErrorRatePct"`
+	PrometheusJobLabel  *string  `json:"prometheusJobLabel"`
+	KubernetesNamespace *string  `json:"kubernetesNamespace"`
 }
 
 type updateMicroserviceRequest struct {
-	Name            string   `json:"name" binding:"required"`
-	Description     string   `json:"description" binding:"required"`
-	Language        string   `json:"language" binding:"required"`
-	MainEndpoints   []string `json:"mainEndpoints"`
-	CPULimit        string   `json:"cpuLimit"`
-	MemoryLimit     string   `json:"memoryLimit"`
-	SLOLatencyP99Ms int      `json:"sloLatencyP99Ms"`
-	SLOErrorRatePct float64  `json:"sloErrorRatePct"`
+	Name                string   `json:"name" binding:"required"`
+	Description         string   `json:"description" binding:"required"`
+	Language            string   `json:"language" binding:"required"`
+	MainEndpoints       []string `json:"mainEndpoints"`
+	CPULimit            string   `json:"cpuLimit"`
+	MemoryLimit         string   `json:"memoryLimit"`
+	SLOLatencyP99Ms     int      `json:"sloLatencyP99Ms"`
+	SLOErrorRatePct     float64  `json:"sloErrorRatePct"`
+	PrometheusJobLabel  *string  `json:"prometheusJobLabel"`
+	KubernetesNamespace *string  `json:"kubernetesNamespace"`
 }
 
 type createRunRequest struct {
@@ -83,17 +87,19 @@ type suiteDetailResponse struct {
 }
 
 type microserviceResponse struct {
-	ID              string   `json:"id"`
-	TestSuiteID     string   `json:"testSuiteId"`
-	Name            string   `json:"name"`
-	Description     string   `json:"description"`
-	Language        string   `json:"language"`
-	MainEndpoints   []string `json:"mainEndpoints"`
-	CPULimit        string   `json:"cpuLimit"`
-	MemoryLimit     string   `json:"memoryLimit"`
-	SLOLatencyP99Ms int      `json:"sloLatencyP99Ms"`
-	SLOErrorRatePct float64  `json:"sloErrorRatePct"`
-	CreatedAt       string   `json:"createdAt"`
+	ID                  string   `json:"id"`
+	TestSuiteID         string   `json:"testSuiteId"`
+	Name                string   `json:"name"`
+	Description         string   `json:"description"`
+	Language            string   `json:"language"`
+	MainEndpoints       []string `json:"mainEndpoints"`
+	CPULimit            string   `json:"cpuLimit"`
+	MemoryLimit         string   `json:"memoryLimit"`
+	SLOLatencyP99Ms     int      `json:"sloLatencyP99Ms"`
+	SLOErrorRatePct     float64  `json:"sloErrorRatePct"`
+	PrometheusJobLabel  *string  `json:"prometheusJobLabel"`
+	KubernetesNamespace *string  `json:"kubernetesNamespace"`
+	CreatedAt           string   `json:"createdAt"`
 }
 
 type runResponse struct {
@@ -149,17 +155,19 @@ func toMicroserviceResponse(m *types.Microservice) microserviceResponse {
 		endpoints = []string{}
 	}
 	return microserviceResponse{
-		ID:              m.ID(),
-		TestSuiteID:     m.TestSuiteID(),
-		Name:            m.Name(),
-		Description:     m.Description(),
-		Language:        m.Language(),
-		MainEndpoints:   endpoints,
-		CPULimit:        m.CPULimit(),
-		MemoryLimit:     m.MemoryLimit(),
-		SLOLatencyP99Ms: m.SLOLatencyP99Ms(),
-		SLOErrorRatePct: m.SLOErrorRatePct(),
-		CreatedAt:       m.CreatedAt().Format(time.RFC3339),
+		ID:                  m.ID(),
+		TestSuiteID:         m.TestSuiteID(),
+		Name:                m.Name(),
+		Description:         m.Description(),
+		Language:            m.Language(),
+		MainEndpoints:       endpoints,
+		CPULimit:            m.CPULimit(),
+		MemoryLimit:         m.MemoryLimit(),
+		SLOLatencyP99Ms:     m.SLOLatencyP99Ms(),
+		SLOErrorRatePct:     m.SLOErrorRatePct(),
+		PrometheusJobLabel:  m.PrometheusJobLabel(),
+		KubernetesNamespace: m.KubernetesNamespace(),
+		CreatedAt:           m.CreatedAt().Format(time.RFC3339),
 	}
 }
 
@@ -282,7 +290,7 @@ func (h *Handlers) createMicroservice(c *gin.Context) {
 	if endpoints == nil {
 		endpoints = []string{}
 	}
-	m := types.NewMicroservice(suiteID, req.Name, req.Description, req.Language, endpoints, req.CPULimit, req.MemoryLimit, req.SLOLatencyP99Ms, req.SLOErrorRatePct)
+	m := types.NewMicroservice(suiteID, req.Name, req.Description, req.Language, endpoints, req.CPULimit, req.MemoryLimit, req.SLOLatencyP99Ms, req.SLOErrorRatePct, req.PrometheusJobLabel, req.KubernetesNamespace)
 	created, err := h.microservices.Create(ctx, m)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create microservice"})
@@ -303,7 +311,7 @@ func (h *Handlers) updateMicroservice(c *gin.Context) {
 	if endpoints == nil {
 		endpoints = []string{}
 	}
-	m := types.NewMicroservice("", req.Name, req.Description, req.Language, endpoints, req.CPULimit, req.MemoryLimit, req.SLOLatencyP99Ms, req.SLOErrorRatePct)
+	m := types.NewMicroservice("", req.Name, req.Description, req.Language, endpoints, req.CPULimit, req.MemoryLimit, req.SLOLatencyP99Ms, req.SLOErrorRatePct, req.PrometheusJobLabel, req.KubernetesNamespace)
 	updated, err := h.microservices.Update(ctx, id, m)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})

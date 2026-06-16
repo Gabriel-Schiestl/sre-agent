@@ -36,55 +36,62 @@ func (s *Suite) UpdatedAt() time.Time { return s.updatedAt }
 // --- Microservice ---
 
 type Microservice struct {
-	id              string
-	testSuiteID     string
-	name            string
-	description     string
-	language        string
-	mainEndpoints   []string
-	cpuLimit        string
-	memoryLimit     string
-	sloLatencyP99Ms int
-	sloErrorRatePct float64
-	createdAt       time.Time
+	id                  string
+	testSuiteID         string
+	name                string
+	description         string
+	language            string
+	mainEndpoints       []string
+	cpuLimit            string
+	memoryLimit         string
+	sloLatencyP99Ms     int
+	sloErrorRatePct     float64
+	prometheusJobLabel  *string
+	kubernetesNamespace *string
+	createdAt           time.Time
 }
 
-func NewMicroservice(suiteID, name, description, language string, mainEndpoints []string, cpuLimit, memoryLimit string, sloLatencyP99Ms int, sloErrorRatePct float64) *Microservice {
+func NewMicroservice(suiteID, name, description, language string, mainEndpoints []string, cpuLimit, memoryLimit string, sloLatencyP99Ms int, sloErrorRatePct float64, prometheusJobLabel, kubernetesNamespace *string) *Microservice {
 	return &Microservice{
-		id:              newID(),
-		testSuiteID:     suiteID,
-		name:            name,
-		description:     description,
-		language:        language,
-		mainEndpoints:   mainEndpoints,
-		cpuLimit:        cpuLimit,
-		memoryLimit:     memoryLimit,
-		sloLatencyP99Ms: sloLatencyP99Ms,
-		sloErrorRatePct: sloErrorRatePct,
-		createdAt:       time.Now(),
+		id:                  newID(),
+		testSuiteID:         suiteID,
+		name:                name,
+		description:         description,
+		language:            language,
+		mainEndpoints:       mainEndpoints,
+		cpuLimit:            cpuLimit,
+		memoryLimit:         memoryLimit,
+		sloLatencyP99Ms:     sloLatencyP99Ms,
+		sloErrorRatePct:     sloErrorRatePct,
+		prometheusJobLabel:  prometheusJobLabel,
+		kubernetesNamespace: kubernetesNamespace,
+		createdAt:           time.Now(),
 	}
 }
 
-func LoadMicroservice(id, testSuiteID, name, description, language string, mainEndpoints []string, cpuLimit, memoryLimit string, sloLatencyP99Ms int, sloErrorRatePct float64, createdAt time.Time) *Microservice {
+func LoadMicroservice(id, testSuiteID, name, description, language string, mainEndpoints []string, cpuLimit, memoryLimit string, sloLatencyP99Ms int, sloErrorRatePct float64, prometheusJobLabel, kubernetesNamespace *string, createdAt time.Time) *Microservice {
 	return &Microservice{
 		id: id, testSuiteID: testSuiteID, name: name, description: description,
 		language: language, mainEndpoints: mainEndpoints, cpuLimit: cpuLimit,
 		memoryLimit: memoryLimit, sloLatencyP99Ms: sloLatencyP99Ms,
-		sloErrorRatePct: sloErrorRatePct, createdAt: createdAt,
+		sloErrorRatePct: sloErrorRatePct, prometheusJobLabel: prometheusJobLabel,
+		kubernetesNamespace: kubernetesNamespace, createdAt: createdAt,
 	}
 }
 
-func (m *Microservice) ID() string              { return m.id }
-func (m *Microservice) TestSuiteID() string     { return m.testSuiteID }
-func (m *Microservice) Name() string            { return m.name }
-func (m *Microservice) Description() string     { return m.description }
-func (m *Microservice) Language() string        { return m.language }
-func (m *Microservice) MainEndpoints() []string { return m.mainEndpoints }
-func (m *Microservice) CPULimit() string        { return m.cpuLimit }
-func (m *Microservice) MemoryLimit() string     { return m.memoryLimit }
-func (m *Microservice) SLOLatencyP99Ms() int    { return m.sloLatencyP99Ms }
-func (m *Microservice) SLOErrorRatePct() float64 { return m.sloErrorRatePct }
-func (m *Microservice) CreatedAt() time.Time    { return m.createdAt }
+func (m *Microservice) ID() string                   { return m.id }
+func (m *Microservice) TestSuiteID() string          { return m.testSuiteID }
+func (m *Microservice) Name() string                 { return m.name }
+func (m *Microservice) Description() string          { return m.description }
+func (m *Microservice) Language() string             { return m.language }
+func (m *Microservice) MainEndpoints() []string      { return m.mainEndpoints }
+func (m *Microservice) CPULimit() string             { return m.cpuLimit }
+func (m *Microservice) MemoryLimit() string          { return m.memoryLimit }
+func (m *Microservice) SLOLatencyP99Ms() int         { return m.sloLatencyP99Ms }
+func (m *Microservice) SLOErrorRatePct() float64     { return m.sloErrorRatePct }
+func (m *Microservice) PrometheusJobLabel() *string  { return m.prometheusJobLabel }
+func (m *Microservice) KubernetesNamespace() *string { return m.kubernetesNamespace }
+func (m *Microservice) CreatedAt() time.Time         { return m.createdAt }
 
 // --- TestRun ---
 

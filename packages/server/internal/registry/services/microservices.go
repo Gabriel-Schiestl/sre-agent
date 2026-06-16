@@ -46,6 +46,7 @@ func (s *microserviceService) Update(ctx context.Context, id string, m *types.Mi
 		existing.ID(), existing.TestSuiteID(),
 		m.Name(), m.Description(), m.Language(), m.MainEndpoints(),
 		m.CPULimit(), m.MemoryLimit(), m.SLOLatencyP99Ms(), m.SLOErrorRatePct(),
+		m.PrometheusJobLabel(), m.KubernetesNamespace(),
 		existing.CreatedAt(),
 	)
 	return s.db.Update(ctx, updated)

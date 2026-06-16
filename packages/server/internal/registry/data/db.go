@@ -35,18 +35,22 @@ func (d *DB) Migrate() error {
 			updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
 		`CREATE TABLE IF NOT EXISTS microservices (
-			id                   TEXT PRIMARY KEY,
-			test_suite_id        TEXT NOT NULL REFERENCES test_suites(id) ON DELETE CASCADE,
-			name                 TEXT NOT NULL,
-			description          TEXT NOT NULL,
-			language             TEXT NOT NULL,
-			main_endpoints       TEXT NOT NULL DEFAULT '[]',
-			cpu_limit            TEXT NOT NULL DEFAULT '',
-			memory_limit         TEXT NOT NULL DEFAULT '',
-			slo_latency_p99_ms   INTEGER NOT NULL DEFAULT 0,
-			slo_error_rate_pct   REAL NOT NULL DEFAULT 0,
-			created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			id                    TEXT PRIMARY KEY,
+			test_suite_id         TEXT NOT NULL REFERENCES test_suites(id) ON DELETE CASCADE,
+			name                  TEXT NOT NULL,
+			description           TEXT NOT NULL,
+			language              TEXT NOT NULL,
+			main_endpoints        TEXT NOT NULL DEFAULT '[]',
+			cpu_limit             TEXT NOT NULL DEFAULT '',
+			memory_limit          TEXT NOT NULL DEFAULT '',
+			slo_latency_p99_ms    INTEGER NOT NULL DEFAULT 0,
+			slo_error_rate_pct    REAL NOT NULL DEFAULT 0,
+			prometheus_job_label  TEXT,
+			kubernetes_namespace  TEXT,
+			created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
+		`ALTER TABLE microservices ADD COLUMN IF NOT EXISTS prometheus_job_label TEXT`,
+		`ALTER TABLE microservices ADD COLUMN IF NOT EXISTS kubernetes_namespace TEXT`,
 		`CREATE TABLE IF NOT EXISTS test_runs (
 			id               TEXT PRIMARY KEY,
 			test_suite_id    TEXT NOT NULL REFERENCES test_suites(id) ON DELETE CASCADE,
