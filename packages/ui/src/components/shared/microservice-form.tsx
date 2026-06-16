@@ -38,6 +38,8 @@ export const microserviceSchema = z.object({
   memoryLimit: z.string().optional(),
   sloLatencyP99Ms: z.number().positive().optional(),
   sloErrorRatePct: z.number().positive().optional(),
+  prometheusJobLabel: z.string().optional(),
+  kubernetesNamespace: z.string().optional(),
 })
 
 export type MicroserviceFormValues = z.infer<typeof microserviceSchema>
@@ -235,6 +237,34 @@ export function MicroserviceForm({
                           )
                         }
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="prometheusJobLabel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Prometheus Job Label</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. payment-service" {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="kubernetesNamespace"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kubernetes Namespace</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. production" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

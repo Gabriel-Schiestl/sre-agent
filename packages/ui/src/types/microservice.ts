@@ -9,6 +9,8 @@ export interface Microservice {
   memoryLimit?: string
   sloLatencyP99Ms?: number
   sloErrorRatePct?: number
+  prometheusJobLabel?: string | null
+  kubernetesNamespace?: string | null
   createdAt: string
 }
 
@@ -21,6 +23,8 @@ export interface CreateMicroservicePayload {
   memoryLimit?: string
   sloLatencyP99Ms?: number
   sloErrorRatePct?: number
+  prometheusJobLabel?: string | null
+  kubernetesNamespace?: string | null
 }
 
 export type UpdateMicroservicePayload = CreateMicroservicePayload
