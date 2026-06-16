@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	collectorpkg "github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/collector"
 	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/services"
 )
 
@@ -64,7 +65,7 @@ func buildUserMessage(payload services.AnalysisPayload) string {
 
 	// Aggregated metrics
 	d := payload.Data
-	sb.WriteString("\n## Aggregated Metrics\n")
+	sb.WriteString("\n## Aggregated Metrics (JMeter)\n")
 	sb.WriteString(fmt.Sprintf("- Total requests: %d\n", d.TotalRequests))
 	sb.WriteString(fmt.Sprintf("- Error rate: %.2f%%\n", d.ErrorRate*100))
 	sb.WriteString(fmt.Sprintf("- Latency P50: %.1f ms\n", d.LatencyP50Ms))
@@ -91,13 +92,75 @@ func buildUserMessage(payload services.AnalysisPayload) string {
 
 	// Timeline
 	if len(d.Timeline) > 0 {
-		sb.WriteString("\n## Timeline (sampled windows)\n")
+		sb.WriteString("\n## Timeline (30s windows)\n")
 		for _, tp := range d.Timeline {
 			sb.WriteString(fmt.Sprintf("- t=%d: errors=%d/%d P99=%.1fms\n",
 				tp.WindowStart, tp.ErrorCount, tp.TotalCount, tp.P99Ms))
 		}
 	}
 
+	// Prometheus infrastructure metrics
+	if p := payload.Prometheus; p != nil && len(p.Services) > 0 {
+		sb.WriteString("\n## Infrastructure Metrics (Prometheus)\n")
+		for _, svc := range p.Services {
+			sb.WriteString(fmt.Sprintf("### %s\n", svc.MicroserviceName))
+
+			// Kubernetes cAdvisor metrics
+			if len(svc.CPURateCores) > 0 {
+				avg := avgPoints(svc.CPURateCores)
+				peak := maxPoints(svc.CPURateCores)
+				sb.WriteString(fmt.Sprintf("- CPU usage: avg=%.3f cores, peak=%.3f cores\n", avg, peak))
+			}
+			if len(svc.MemoryBytes) > 0 {
+				avg := avgPoints(svc.MemoryBytes)
+				peak := maxPoints(svc.MemoryBytes)
+				sb.WriteString(fmt.Sprintf("- Memory: avg=%.1f MB, peak=%.1f MB\n", avg/1e6, peak/1e6))
+			}
+			if svc.RestartsDelta > 0 {
+				sb.WriteString(fmt.Sprintf("- Pod restarts during test: %d\n", svc.RestartsDelta))
+			}
+			if svc.OOMKilledCount > 0 {
+				sb.WriteString(fmt.Sprintf("- OOMKilled events: %d\n", svc.OOMKilledCount))
+			}
+
+			// Non-Kubernetes process metrics
+			if len(svc.ProcessCPURate) > 0 {
+				avg := avgPoints(svc.ProcessCPURate)
+				peak := maxPoints(svc.ProcessCPURate)
+				sb.WriteString(fmt.Sprintf("- Process CPU rate: avg=%.3f, peak=%.3f\n", avg, peak))
+			}
+			if len(svc.ProcessMemBytes) > 0 {
+				avg := avgPoints(svc.ProcessMemBytes)
+				peak := maxPoints(svc.ProcessMemBytes)
+				sb.WriteString(fmt.Sprintf("- Process memory: avg=%.1f MB, peak=%.1f MB\n", avg/1e6, peak/1e6))
+			}
+		}
+	}
+
 	sb.WriteString("\nAnalyze the data above and return the JSON diagnosis.")
 	return sb.String()
+}
+
+func avgPoints(pts []collectorpkg.TimeseriesPoint) float64 {
+	if len(pts) == 0 {
+		return 0
+	}
+	sum := 0.0
+	for _, p := range pts {
+		sum += p.Value
+	}
+	return sum / float64(len(pts))
+}
+
+func maxPoints(pts []collectorpkg.TimeseriesPoint) float64 {
+	if len(pts) == 0 {
+		return 0
+	}
+	max := pts[0].Value
+	for _, p := range pts[1:] {
+		if p.Value > max {
+			max = p.Value
+		}
+	}
+	return max
 }
