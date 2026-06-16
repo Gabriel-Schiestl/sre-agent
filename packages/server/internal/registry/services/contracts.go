@@ -1,6 +1,12 @@
 package services
 
-import "github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/types"
+import (
+	"context"
+	"time"
+
+	collectorpkg "github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/collector"
+	"github.com/Gabriel-Schiestl/sre-agent/packages/server/internal/registry/types"
+)
 
 // RunPayload is the input to the runner module.
 type RunPayload struct {
@@ -20,6 +26,8 @@ type AggregatedData struct {
 	ErrorsByType    []ErrorGroup
 	EndpointMetrics []EndpointMetric
 	Timeline        []TimelinePoint
+	StartTime       time.Time
+	EndTime         time.Time
 }
 
 type ErrorGroup struct {
@@ -50,7 +58,11 @@ type AnalysisPayload struct {
 	Suite         *types.Suite
 	Microservices []*types.Microservice
 	Data          AggregatedData
+	Prometheus    *collectorpkg.PrometheusData // nil when Prometheus is not configured
 }
+
+// CollectPayload is the input to the collector module.
+type CollectPayload = collectorpkg.CollectPayload
 
 // Runner is the interface that the runner module must implement.
 type Runner interface {
@@ -60,4 +72,10 @@ type Runner interface {
 // Analyst is the interface that the analyst module must implement.
 type Analyst interface {
 	Analyze(payload AnalysisPayload) (*types.Diagnosis, error)
+}
+
+// Collector is the interface that the collector module must implement.
+// It is optional — a nil Collector means Prometheus is not configured.
+type Collector interface {
+	Collect(ctx context.Context, payload collectorpkg.CollectPayload) (*collectorpkg.PrometheusData, error)
 }
